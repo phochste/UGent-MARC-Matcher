@@ -1,0 +1,52 @@
+@prefix : <https://bellow.ugent.be/matching/> .
+@prefix dc: <http://purl.org/dc/terms/> .
+@prefix schema: <https://schema.org/> .
+
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
+@prefix log: <http://www.w3.org/2000/10/swap/log#> .
+@prefix string: <http://www.w3.org/2000/10/swap/string#> .
+@prefix math: <http://www.w3.org/2000/10/swap/math#> .
+
+# Define a BIB holding
+{
+    ?String :aBibHolding true .
+}
+<=
+{
+    ?String string:matches "^BIB.*" .
+} .
+
+# Every record with an isPartOf with the same holding is probably related
+{
+    ?Record dc:isPartOf ?Holding .
+    ?Holding :aBibHolding true .
+}
+=>
+{  
+    ?Holding a :BibHolding . 
+    ?Holding dc:isReferencedBy ?Record .
+} .
+
+# Find the records that are refereced by more than one holding
+{
+    ?String a :BibHolding .
+    ?String dc:isReferencedBy ?Something .
+    ( ?String dc:isReferencedBy ) :hasCardinality ( ?X ?List ) .
+    ?X math:greaterThan 1 .
+}
+=>
+{
+    ?String :hasHoldingDouble ( ?X ?List ) .
+} .
+
+# Every Holding double generates isHoldingRelatedTo links
+{
+    ?Uri :hasHoldingDouble ( ?Num ?List ) .
+    ?List list:member ?MemberA .
+    ?List list:member ?MemberB . 
+    ?MemberA log:notEqualTo ?MemberB .
+}
+=>
+{
+    ?MemberA schema:isHoldingRelatedTo ?MemberB .
+} .

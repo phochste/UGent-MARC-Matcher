@@ -1,0 +1,9 @@
+@prefix schema: <https://schema.org/> .
+
+{
+  <ser01:000010652> schema:isHoldingRelatedTo ?O .
+}
+=>
+{
+  <ser01:000010652> schema:isHoldingRelatedTo ?O .
+} .

@@ -1,0 +1,135 @@
+@prefix : <https://bellow.ugent.be/matching/> .
+@prefix dc: <http://purl.org/dc/terms/> .
+@prefix schema: <https://schema.org/> .
+@prefix lv: <http://purl.org/lobid/lv#> .
+
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
+@prefix log: <http://www.w3.org/2000/10/swap/log#> .
+@prefix string: <http://www.w3.org/2000/10/swap/string#> .
+@prefix math: <http://www.w3.org/2000/10/swap/math#> .
+
+# Define the cardinality of a property
+#
+#   ( ?Subject ?Property )  :hasCardinality ( ?X ?List ) 
+#
+#   where 
+#
+#   X a numberable
+#   List a list with all objects matching the subject object 
+{
+    ( ?Subject ?Property ) :hasCardinality ( ?X ?List ) .   
+}
+<=
+{
+    ( ?Id { ?Subject ?Property ?Id } ?List ) log:collectAllIn _:x .
+    ?List list:length ?X .
+} .
+
+# Define an ISSN
+#
+#   ?String :asISSN ?Output
+{
+    ?String :asISSN ?Output .
+}
+<=
+{
+    ?String string:matches "^[0-9]{4}-[0-9]{3}[0-9X]$" .
+    ( "urn:ISSN:" ?String ) string:concatenation ?Template .
+    ?Output log:uri ?Template .
+} .
+
+# Define a UGent Library Record
+#
+#  ?Uri :aAnalogRecord true 
+{
+    ?Uri :aAnalogRecord true .
+}
+<=
+{
+    ?Uri log:uri ?String .
+    ?String string:matches "ser01:|rug01:" .
+} .
+
+# Define a UGent Library Record
+#
+#  ?Uri :aElectronicRecord true 
+{
+    ?Uri :aElectronicRecord true .
+}
+<=
+{
+    ?Uri log:uri ?String .
+    ?String string:matches "ejn01:" .
+} .
+
+
+##############################################################
+
+# Every record with a title and matching an analog record is an analog record
+{
+    ?Record dc:title [] .
+    ?Record :aAnalogRecord true .
+}
+=>
+{
+    ?Record a :AnalogRecord .
+} .
+
+# Every record with a title and matching an electronic record is an electronic record
+{
+    ?Record dc:title [] .
+    ?Record :aElectronicRecord true .
+}
+=>
+{
+    ?Record a :ElectronicRecord .
+} .
+
+
+# Every record with an ISSN identifier is references by that ISSN
+{
+    ?Record dc:identifier ?String .
+    ?String :asISSN ?ISSN .
+}
+=>
+{
+    ?ISSN a :ISSN .
+    ?ISSN dc:isReferencedBy ?Record .
+} .
+
+# Find the records that are referenced by more than one ISSN
+{
+    ?Uri a :ISSN .
+    ?Uri dc:isReferencedBy ?Something .
+    ( ?Uri dc:isReferencedBy ) :hasCardinality ( ?X ?List ) .
+    ?X math:greaterThan 1 .
+} 
+=> 
+{
+    ?Uri :hasISSNDouble ( ?X ?List ) .
+} .
+
+# Every ISSN double generates isRelatedTo links 
+{
+    ?Uri :hasISSNDouble ( ?Num ?List ) .
+    ?List list:member ?MemberA .
+    ?List list:member ?MemberB .
+    ?MemberA log:notEqualTo ?MemberB .
+} 
+=> 
+{
+    ?MemberA schema:isRelatedTo ?MemberB .
+} .
+
+# If we have related Electronic and Analog records we can mix them and delete one
+{
+    ?A schema:isRelatedTo ?B .
+    ?A a :AnalogRecord .
+    ?B a :ElectronicRecord .
+    ?B lv:fulltextOnline ?Fulltext .
+}
+=>
+{
+    ?A lv:fulltextOnline ?Fulltext .
+    ?B a :Deleted .
+} .
